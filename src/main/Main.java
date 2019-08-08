@@ -16,6 +16,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import models.ImageGraph;
+
 public class Main {
 
 	public static void main(String[] args) {
@@ -23,13 +25,13 @@ public class Main {
 		
 		BufferedImage picture = Main.readImageFrom("/testImage.jpg");
 		
-		int height = picture.getHeight();
-		int width = picture.getWidth();
-		int[] pixels = new int[width * height];
+		// Undirected weighted graph for Prim's algorithm
+		ImageGraph graph = new ImageGraph(picture);
+		graph.fillGraph();
 						
-		for (int j = 0; j < width; j++) {
-			picture.setRGB(j, height - 1, Color.RED.getRGB());
-		}
+//		for (int j = 0; j < width; j++) {
+//			picture.setRGB(j, height - 1, Color.RED.getRGB());
+//		}
 		
 		Main.showImage(picture);
 

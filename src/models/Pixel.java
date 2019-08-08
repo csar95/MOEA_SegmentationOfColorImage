@@ -1,31 +1,29 @@
 package models;
 
 import java.awt.Color;
-import java.awt.image.BufferedImage;
 
 public class Pixel {
 	
-	private int coordinateX;
-	private int coordinateY;
-	private Color color;
-	private Pixel upPixel;
-	private Pixel downPixel;
-	private Pixel lefPixel;
-	private Pixel rightPixel;
+	Color color;
+//	int r, g, b;
+	double upperEdge, lowerEdge, leftEdge, rightEdge;
 	
-	public Pixel (int x, int y, Color color) {
-		
-		this.coordinateX = x;
-		this.coordinateY = y;
-		this.color = color;
-		
-	}
+	public Pixel (int c) {
+		this.color = new Color(c);
+//		this.r = this.color.getRed();
+//		this.g = this.color.getGreen();
+//		this.b = this.color.getBlue();
+	}	
 	
-	public Pixel (int index, BufferedImage img, int rgbColor) {
+	public double getEuclideanDistance (int color2) {
 		
-		this.coordinateX = index % img.getWidth();
-		this.coordinateY = index % img.getHeight();
-		this.color = new Color(rgbColor); 
+		Color c1 = this.color;
+		Color c2 = new Color(color2, true);
+		
+		return Math.sqrt(
+				Math.pow((c1.getRed() - c2.getRed()), 2) +
+				Math.pow((c1.getGreen() - c2.getGreen()), 2) +
+				Math.pow((c1.getBlue() - c2.getBlue()), 2));
 		
 	}
 
