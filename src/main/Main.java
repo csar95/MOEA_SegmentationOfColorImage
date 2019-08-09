@@ -1,13 +1,9 @@
 package main;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.awt.image.PixelGrabber;
-import java.awt.image.WritableRaster;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
@@ -27,7 +23,10 @@ public class Main {
 		
 		// Undirected weighted graph for Prim's algorithm
 		ImageGraph graph = new ImageGraph(picture);
-		graph.fillGraph();
+		graph.fill_graph();
+		
+		int[] mst = graph.prims_algorithm();
+		System.out.println(mst.toString());
 						
 //		for (int j = 0; j < width; j++) {
 //			picture.setRGB(j, height - 1, Color.RED.getRGB());
