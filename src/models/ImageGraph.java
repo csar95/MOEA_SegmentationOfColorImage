@@ -74,7 +74,7 @@ public class ImageGraph {
 		int[] minimumShortestTree = new int [height * width];
 		Arrays.fill(minimumShortestTree, -1);
 		
-		ArrayList<Coordinates> pixelsInTree = new ArrayList<Coordinates>();
+		ArrayList<Coordinates> borderPixelsInTree = new ArrayList<Coordinates>();
 		
 		// Random pixel to begin with
 		int i = (int) (Math.random() * this.height);
@@ -82,47 +82,66 @@ public class ImageGraph {
 		
 		int pos = i * this.width + j;
 		minimumShortestTree[pos] = -2;
-		pixelsInTree.add( new Coordinates(j, i));
+		borderPixelsInTree.add( new Coordinates(j, i));
 		
-		int newPixelPos;
+		int newPixelPos, destPos, indexToRemove, elementsInTree;
 		
 		// Store the pixel to which the new one is directed
 		switch (adjacencyMatrix[i][j].get_minimum_edge()) {
 		case 1: // Upper
 			newPixelPos = (i-1) * this.width + j;
 			minimumShortestTree[newPixelPos] = pos;
-			pixelsInTree.add( new Coordinates( j, i-1 ));
+			borderPixelsInTree.add( new Coordinates( j, i-1 ));
 			break;
 		case 2:	// Right
 			newPixelPos = i * this.width + (j+1);
 			minimumShortestTree[newPixelPos] = pos;
-			pixelsInTree.add( new Coordinates( j+1, i ));
+			borderPixelsInTree.add( new Coordinates( j+1, i ));
 			break;
 		case 3:	// Lower
 			newPixelPos = (i+1) * this.width + j;
 			minimumShortestTree[newPixelPos] = pos;
-			pixelsInTree.add( new Coordinates( j, i+1 ));
+			borderPixelsInTree.add( new Coordinates( j, i+1 ));
 			break;
 		default: // Left
 			newPixelPos = i * this.width + (j-1);
 			minimumShortestTree[newPixelPos] = pos;
-			pixelsInTree.add( new Coordinates( j-1, i ));
+			borderPixelsInTree.add( new Coordinates( j-1, i ));
 			break;
 		}
 		
-		// TODO: Debug
-		while (pixelsInTree.size() < this.height * this.width) {
-			int[] nextPixelData = this.find_next_pixel(pixelsInTree);
-			minimumShortestTree[nextPixelData[0]] = nextPixelData[1];
-			pixelsInTree.add( new Coordinates(nextPixelData[0]%this.width, nextPixelData[0]/this.width) );
+		elementsInTree = 2;
+		long start = System.currentTimeMillis(), finish;
+		while (elementsInTree < this.height * this.width) {
+			
+			if (elementsInTree % 1000 == 0) {
+				finish = System.currentTimeMillis();
+				System.out.println(elementsInTree + " - " + borderPixelsInTree.size() + " - " + (finish - start) / 1000.);
+				start = System.currentTimeMillis();
+			}			
+			
+			int[] nextPixelData = this.find_next_pixel(borderPixelsInTree, minimumShortestTree);
+			newPixelPos = nextPixelData[0];
+			destPos = nextPixelData[1];
+			minimumShortestTree[newPixelPos] = destPos;
+			borderPixelsInTree.add( new Coordinates(newPixelPos%this.width, newPixelPos/this.width) );
+			
+			if (!isBorderPixel(destPos, minimumShortestTree)) {
+				indexToRemove = borderPixelsInTree.indexOf(new Coordinates(destPos%this.width, destPos/this.width));				
+				borderPixelsInTree.remove(indexToRemove);
+			}
+			
+			elementsInTree++;			 
 		}
+		
+		System.out.println(borderPixelsInTree.size());
 		
 		minimumShortestTree[pos] = pos;		
 		return minimumShortestTree;
 		
 	}
 	
-	private int[] find_next_pixel (ArrayList<Coordinates> pixels) {
+	private int[] find_next_pixel (ArrayList<Coordinates> pixels, int[] mst) {
 		
 		Coordinates coordinates = null;
 		int i, j, newPixelPos = -1, destPos = -1;
@@ -135,7 +154,7 @@ public class ImageGraph {
 			j = coordinates.getCoordJ();
 			
 			// Check if there's any neighbor not included in tree yet
-			if ((i-1) >= 0 && pixels.indexOf( new Coordinates(j, i-1) ) == -1) { // Upper pixel	doesn't exist on tree
+			if ((i-1) >= 0 && mst[ (i-1) * this.width + j ] == -1) { // Upper pixel	doesn't exist on tree
 				edgeValue = this.adjacencyMatrix[i][j].getUpperEdge();
 				if (edgeValue < minEdge) {
 					minEdge = edgeValue;
@@ -143,7 +162,7 @@ public class ImageGraph {
 					destPos = i * this.width + j;
 				}				
 			}
-			if ((j+1) < this.width && pixels.indexOf( new Coordinates(j+1, i) ) == -1) { // Right pixel doesn't exist on tree
+			if ((j+1) < this.width && mst[ i * this.width + (j+1) ] == -1) { // Right pixel doesn't exist on tree
 				edgeValue = this.adjacencyMatrix[i][j].getRightEdge();
 				if (edgeValue < minEdge) {
 					minEdge = edgeValue;
@@ -151,7 +170,7 @@ public class ImageGraph {
 					destPos = i * this.width + j;
 				}				
 			}
-			if ((i+1) < this.height && pixels.indexOf( new Coordinates(j, i+1) ) == -1) { // Lower pixel doesn't exist on tree
+			if ((i+1) < this.height && mst[ (i+1) * this.width + j ] == -1) { // Lower pixel doesn't exist on tree
 				edgeValue = this.adjacencyMatrix[i][j].getLowerEdge();
 				if (edgeValue < minEdge) {
 					minEdge = edgeValue;
@@ -159,7 +178,7 @@ public class ImageGraph {
 					destPos = i * this.width + j;
 				}				
 			}
-			if ((j-1) >= 0 && pixels.indexOf( new Coordinates(j-1, i) ) == -1) { // Left pixel doesn't exist on tree
+			if ((j-1) >= 0 && mst[ i * this.width + (j-1) ] == -1) { // Left pixel doesn't exist on tree
 				edgeValue = this.adjacencyMatrix[i][j].getLeftEdge();
 				if (edgeValue < minEdge) {
 					minEdge = edgeValue;
@@ -171,7 +190,23 @@ public class ImageGraph {
 		
 		return new int[] {newPixelPos, destPos};
 		
-	}	
+	}
+	
+	private boolean isBorderPixel (int destPos, int[] mst) {
+		
+		int j = destPos%this.width;
+		int i = destPos/this.width;
+		
+		int up = (i-1) * this.width + j, right = i * this.width + (j+1), down = (i+1) * this.width + j, left = i * this.width + (j-1);
+		
+		if (up >= 0 && up < (this.height * this.width) && mst[destPos] != up && mst[up] == -1) return true;
+		if (right >= 0 && right < (this.height * this.width) && mst[destPos] != right && mst[right] == -1) return true;
+		if (down >= 0 && down < (this.height * this.width) && mst[destPos] != down && mst[down] == -1) return true;
+		if (left >= 0 && left < (this.height * this.width) && mst[destPos] != left && mst[left] == -1) return true;
+		
+		return false;
+		
+	}
 
 }
 

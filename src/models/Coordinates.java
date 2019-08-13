@@ -8,6 +8,16 @@ public class Coordinates {
 		this.setCoordI(y);
 		this.setCoordJ(x);
 	}
+	
+	public boolean equals(Object o) {
+		
+	    if (!(o instanceof Coordinates))
+	    	return false;
+	    
+	    Coordinates aux = (Coordinates) o;
+	    return (this.i == aux.i && this.j == aux.j);
+	    
+	}
 
 	public int getCoordI() {
 		return this.i;
