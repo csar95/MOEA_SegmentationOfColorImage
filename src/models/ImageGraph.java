@@ -114,11 +114,11 @@ public class ImageGraph {
 		long start = System.currentTimeMillis(), finish;
 		while (elementsInTree < this.height * this.width) {
 			
-			if (elementsInTree % 1000 == 0) {
-				finish = System.currentTimeMillis();
-				System.out.println(elementsInTree + " - " + borderPixelsInTree.size() + " - " + (finish - start) / 1000.);
-				start = System.currentTimeMillis();
-			}			
+//			if (elementsInTree % 1000 == 0) {
+//				finish = System.currentTimeMillis();
+//				System.out.println(elementsInTree + " - " + borderPixelsInTree.size() + " - " + (finish - start) / 1000.);
+//				start = System.currentTimeMillis();
+//			}			
 			
 			int[] nextPixelData = this.find_next_pixel(borderPixelsInTree, minimumShortestTree);
 			newPixelPos = nextPixelData[0];
@@ -134,7 +134,8 @@ public class ImageGraph {
 			elementsInTree++;			 
 		}
 		
-		System.out.println(borderPixelsInTree.size());
+		finish = System.currentTimeMillis();
+		System.out.println("Solved in " + (finish - start) / 1000. + " seconds.");
 		
 		minimumShortestTree[pos] = pos;		
 		return minimumShortestTree;
@@ -146,15 +147,18 @@ public class ImageGraph {
 		Coordinates coordinates = null;
 		int i, j, newPixelPos = -1, destPos = -1;
 		double minEdge = 9999999.9, edgeValue;
+		boolean isBorder;
 		
 		Iterator<Coordinates> iterator = pixels.iterator();		
 		while (iterator.hasNext()) {
+			isBorder = false;
 			coordinates = iterator.next();
 			i = coordinates.getCoordI();
 			j = coordinates.getCoordJ();
 			
 			// Check if there's any neighbor not included in tree yet
 			if ((i-1) >= 0 && mst[ (i-1) * this.width + j ] == -1) { // Upper pixel	doesn't exist on tree
+				isBorder = true;
 				edgeValue = this.adjacencyMatrix[i][j].getUpperEdge();
 				if (edgeValue < minEdge) {
 					minEdge = edgeValue;
@@ -163,6 +167,7 @@ public class ImageGraph {
 				}				
 			}
 			if ((j+1) < this.width && mst[ i * this.width + (j+1) ] == -1) { // Right pixel doesn't exist on tree
+				isBorder = true;
 				edgeValue = this.adjacencyMatrix[i][j].getRightEdge();
 				if (edgeValue < minEdge) {
 					minEdge = edgeValue;
@@ -171,6 +176,7 @@ public class ImageGraph {
 				}				
 			}
 			if ((i+1) < this.height && mst[ (i+1) * this.width + j ] == -1) { // Lower pixel doesn't exist on tree
+				isBorder = true;
 				edgeValue = this.adjacencyMatrix[i][j].getLowerEdge();
 				if (edgeValue < minEdge) {
 					minEdge = edgeValue;
@@ -179,6 +185,7 @@ public class ImageGraph {
 				}				
 			}
 			if ((j-1) >= 0 && mst[ i * this.width + (j-1) ] == -1) { // Left pixel doesn't exist on tree
+				isBorder = true;
 				edgeValue = this.adjacencyMatrix[i][j].getLeftEdge();
 				if (edgeValue < minEdge) {
 					minEdge = edgeValue;
@@ -186,6 +193,9 @@ public class ImageGraph {
 					destPos = i * this.width + j;
 				}				
 			}
+			
+			// Remove element from array-list when the 4 neighbor pixels are already included in MST
+			if (!isBorder) iterator.remove();
 		}
 		
 		return new int[] {newPixelPos, destPos};
