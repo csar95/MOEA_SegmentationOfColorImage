@@ -13,6 +13,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import models.ImageGraph;
+import moea.MOEA;
 
 public class Main {
 
@@ -26,7 +27,9 @@ public class Main {
 		graph.fill_graph();
 		
 		int[] mst = graph.prims_algorithm();
-		System.out.println(mst.toString());
+		
+		MOEA moea = new MOEA(mst, picture.getHeight(), picture.getWidth());
+		moea.run_algorithm();
 						
 //		for (int j = 0; j < width; j++) {
 //			picture.setRGB(j, height - 1, Color.RED.getRGB());

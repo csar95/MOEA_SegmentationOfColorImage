@@ -15,7 +15,7 @@ public class Pixel {
 //		this.b = this.color.getBlue();
 	}	
 	
-	public double getEuclideanDistance (int color2) {
+	public double get_euclidean_distance (int color2) {
 		
 		Color c1 = this.color;
 		Color c2 = new Color(color2, true);

@@ -37,7 +37,7 @@ public class ImageGraph {
 		Pixel pixel = new Pixel(this.image.getRGB(j, i));
 		
 		if (i == 0) { // First row			
-			pixel.setLowerEdge( pixel.getEuclideanDistance(this.image.getRGB(j, i+1)) );
+			pixel.setLowerEdge( pixel.get_euclidean_distance(this.image.getRGB(j, i+1)) );
 			this.set_left_right_edges(pixel, i, j);			
 		}
 		else if (i == this.height - 1) { // Last row			
@@ -46,7 +46,7 @@ public class ImageGraph {
 		}
 		else { // Middle rows			
 			pixel.setUpperEdge( this.adjacencyMatrix[i-1][j].getLowerEdge() );
-			pixel.setLowerEdge( pixel.getEuclideanDistance(this.image.getRGB(j, i+1)) );			
+			pixel.setLowerEdge( pixel.get_euclidean_distance(this.image.getRGB(j, i+1)) );			
 			this.set_left_right_edges(pixel, i, j);			
 		}
 		
@@ -57,13 +57,13 @@ public class ImageGraph {
 	private void set_left_right_edges (Pixel pixel, int i, int j) {
 		
 		if (j == 0) { // First column
-			pixel.setRightEdge( pixel.getEuclideanDistance(this.image.getRGB(j+1, i)) );
+			pixel.setRightEdge( pixel.get_euclidean_distance(this.image.getRGB(j+1, i)) );
 		}
 		else if (j == this.width - 1) { // Last column
 			pixel.setLeftEdge( this.adjacencyMatrix[i][j-1].getRightEdge() );
 		}
 		else { // Middle columns
-			pixel.setRightEdge( pixel.getEuclideanDistance(this.image.getRGB(j+1, i)) );
+			pixel.setRightEdge( pixel.get_euclidean_distance(this.image.getRGB(j+1, i)) );
 			pixel.setLeftEdge( this.adjacencyMatrix[i][j-1].getRightEdge() );
 		}
 		
@@ -126,7 +126,7 @@ public class ImageGraph {
 			minimumShortestTree[newPixelPos] = destPos;
 			borderPixelsInTree.add( new Coordinates(newPixelPos%this.width, newPixelPos/this.width) );
 			
-			if (!isBorderPixel(destPos, minimumShortestTree)) {
+			if (!is_border_pixel(destPos, minimumShortestTree)) {
 				indexToRemove = borderPixelsInTree.indexOf(new Coordinates(destPos%this.width, destPos/this.width));				
 				borderPixelsInTree.remove(indexToRemove);
 			}
@@ -135,7 +135,7 @@ public class ImageGraph {
 		}
 		
 		finish = System.currentTimeMillis();
-		System.out.println("Solved in " + (finish - start) / 1000. + " seconds.");
+		System.out.println("Prim's algorithm solved in " + (finish - start) / 1000. + " seconds.");
 		
 		minimumShortestTree[pos] = pos;		
 		return minimumShortestTree;
@@ -202,7 +202,7 @@ public class ImageGraph {
 		
 	}
 	
-	private boolean isBorderPixel (int destPos, int[] mst) {
+	private boolean is_border_pixel (int destPos, int[] mst) {
 		
 		int j = destPos%this.width;
 		int i = destPos/this.width;
