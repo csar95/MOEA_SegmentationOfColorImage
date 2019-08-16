@@ -2,8 +2,6 @@ package main;
 
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
-import java.awt.image.ImageObserver;
-import java.awt.image.PixelGrabber;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
@@ -28,7 +26,7 @@ public class Main {
 		
 		int[] mst = graph.prims_algorithm();
 		
-		MOEA moea = new MOEA(mst, picture.getHeight(), picture.getWidth());
+		MOEA moea = new MOEA(mst, picture);
 		moea.run_algorithm();
 						
 //		for (int j = 0; j < width; j++) {
@@ -71,20 +69,20 @@ public class Main {
 	 * Fill an array with integer values corresponding to the color of the pixel.
 	 * The color is in the binary format, like 11...11010101, however it is given as an integer value.
 	 */
-	private static void getImagePixels (BufferedImage img, int width, int height, int[] pixels) {
-		
-		PixelGrabber pg = new PixelGrabber(img, 0, 0, width, height, pixels, 0, width);
-				
-	    try {
-	    	pg.grabPixels();
-	    } catch (InterruptedException e) {
-	        throw new IllegalStateException("Error: Interrupted Waiting for Pixels");
-	    }
-	    
-	    if ((pg.getStatus() & ImageObserver.ABORT) != 0) {
-	        throw new IllegalStateException("Error: Image Fetch Aborted");
-	    }	    
-				
-	}
+//	private static void getImagePixels (BufferedImage img, int width, int height, int[] pixels) {
+//		
+//		PixelGrabber pg = new PixelGrabber(img, 0, 0, width, height, pixels, 0, width);
+//				
+//	    try {
+//	    	pg.grabPixels();
+//	    } catch (InterruptedException e) {
+//	        throw new IllegalStateException("Error: Interrupted Waiting for Pixels");
+//	    }
+//	    
+//	    if ((pg.getStatus() & ImageObserver.ABORT) != 0) {
+//	        throw new IllegalStateException("Error: Image Fetch Aborted");
+//	    }	    
+//				
+//	}
 
 }

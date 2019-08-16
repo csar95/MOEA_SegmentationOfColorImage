@@ -1,23 +1,25 @@
 package moea;
 
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-import models.Coordinates;
+import models.Pixel;
 
 public class MOEA {
 	
 	private int[] mst;
+	private BufferedImage image;
 	private int height;
 	private int width;
 	private final int POPULATION_SIZE = 50;
 	
-	public MOEA (int[] mst, int height, int width) {
-		this.height = height;
-		this.width = width;
+	public MOEA (int[] mst, BufferedImage img) {
+		this.image = img;
+		this.height = img.getHeight();
+		this.width = img.getWidth();
 		this.mst = mst;
 	}
 	
@@ -28,11 +30,14 @@ public class MOEA {
 		// Generate an initial population
 		for (int i = 1; i <= this.POPULATION_SIZE; i++) {
 			int[] initialSolution = this.get_initial_solution(i);
-			List<ArrayList<Integer>> clusters = get_clusters(initialSolution);
+			List<ArrayList<Integer>> clusters = get_clusters(initialSolution);			
 			population.add(initialSolution);
+			
+			System.out.println("Overall deviation of " + i + "th solution: " + this.calculate_overall_deviation(clusters));
 			
 			finish = System.currentTimeMillis();
 			System.out.println(i + "th solution generated in " + (finish - start) / 1000. + " seconds.");
+			System.out.println("------------------------------------");
 			start = System.currentTimeMillis();
 		}
 		
@@ -101,4 +106,32 @@ public class MOEA {
 		}	
 	}
 
+	private double calculate_overall_deviation (List<ArrayList<Integer>> clusters) {
+		
+		double overallDeviation = .0;
+		int[] centroid;
+		Pixel centroidPixel;
+		
+		for (ArrayList<Integer> cluster : clusters) {
+			
+			centroid = find_centroid(cluster); // 0: i,  1: j
+			centroidPixel = new Pixel(this.image.getRGB(centroid[1], centroid[0]));
+			
+			for (int pixelPos : cluster) {
+				overallDeviation += centroidPixel.get_euclidean_distance(
+						this.image.getRGB( pixelPos%this.width, pixelPos/this.width ));
+			}
+		}
+		
+		return overallDeviation;		
+	}
+	
+	private int[] find_centroid (ArrayList<Integer> cluster) {
+		int totalNumElems = cluster.size(), iTotal = 0, jTotal = 0;
+		for (int pixelPos : cluster) {
+			iTotal += pixelPos / this.width;
+			jTotal += pixelPos % this.width;
+		}
+		return new int[] {Math.round(iTotal/totalNumElems), Math.round(jTotal/totalNumElems)};
+	}
 }
