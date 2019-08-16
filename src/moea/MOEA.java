@@ -1,7 +1,12 @@
 package moea;
 
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
+
+import models.Coordinates;
 
 public class MOEA {
 	
@@ -59,38 +64,41 @@ public class MOEA {
 			if (i == solution[i]) {
 				ArrayList<Integer> newCluster = new ArrayList<Integer>();
 				newCluster.add(i);
+				// Fill cluster with elements based on solution
+				find_cluster_elems(newCluster, solution);
 				clusters.add(newCluster);
 			}
-		}
-		
-		// Fill each cluster with elements
-		for (ArrayList<Integer> cluster : clusters) {
-			cluster = find_cluster_elems(cluster, solution);
 		}
 		
 		return clusters;		
 	}
 	
-	// TODO: Tarda entre 20 y 30 cuando el cluster es grande
-	private ArrayList<Integer> find_cluster_elems (ArrayList<Integer> cluster, int[] solution) {
-		
-		int destination = cluster.get(cluster.size() - 1);
-		
-		int[] options = { (destination >= this.width) ? destination - this.width : -1, // Up
-						  ((destination + 1) % this.width != 0) ? destination + 1 : -1, // Right
-						  (destination + this.width < (this.height * this.width)) ? destination + this.width : -1, // Down
-						  (destination % this.width != 0) ? destination - 1 : -1 // Left
-						};
-		
-		// Find elements in solution that are directed to the destination
-		for (int i : options) {		
-			if (i != -1 && solution[i] == destination && !cluster.contains(i)) {
-				cluster.add(i);
-				cluster = find_cluster_elems(cluster, solution);
+	private void find_cluster_elems (ArrayList<Integer> cluster, int[] solution) {
+	
+		Queue<Integer> pending = new LinkedList<Integer>();
+		int destination;
+		pending.add(cluster.get(0));		
+			
+		while (!pending.isEmpty()) {		
+			destination = pending.remove();
+			
+			if (destination >= this.width && solution[destination - this.width] == destination) {
+				cluster.add(destination - this.width);
+				pending.add(destination - this.width);
 			}
-		}
-		
-		return cluster;
+			if ((destination + 1) % this.width != 0 && solution[destination + 1] == destination) {
+				cluster.add(destination + 1);
+				pending.add(destination + 1);
+			}
+			if (destination + this.width < (this.height * this.width) && solution[destination + this.width] == destination) {
+				cluster.add(destination + this.width);
+				pending.add(destination + this.width);
+			}
+			if (destination % this.width != 0 && solution[destination - 1] == destination) {
+				cluster.add(destination - 1);
+				pending.add(destination - 1);
+			}				
+		}	
 	}
 
 }
