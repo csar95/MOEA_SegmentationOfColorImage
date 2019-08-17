@@ -34,6 +34,7 @@ public class MOEA {
 			population.add(initialSolution);
 			
 			System.out.println("Overall deviation of " + i + "th solution: " + this.calculate_overall_deviation(clusters));
+			System.out.println("Edge value of " + i + "th solution: " + this.calculate_edge_value(clusters, initialSolution));
 			
 			finish = System.currentTimeMillis();
 			System.out.println(i + "th solution generated in " + (finish - start) / 1000. + " seconds.");
@@ -133,5 +134,74 @@ public class MOEA {
 			jTotal += pixelPos % this.width;
 		}
 		return new int[] {Math.round(iTotal/totalNumElems), Math.round(jTotal/totalNumElems)};
+	}
+
+	private double calculate_edge_value (List<ArrayList<Integer>> clusters, int[] solution) {
+		
+		double edgeValue = .0;
+		int pixelPos;
+		Pixel pixel;
+//		ArrayList<Integer> pixelCluster = null;
+		
+		// For every pixel in the image
+		for (int i = 0; i < this.height; i++) {
+			for (int j = 0; j < this.width; j++) {
+				
+				pixel = new Pixel(this.image.getRGB(j, i));
+				pixelPos = i * this.width + j;
+				
+				// Get the cluster the pixel belongs to
+//				for (ArrayList<Integer> cluster : clusters) {
+//					if (cluster.contains(pixelPos)) {
+//						pixelCluster = cluster;
+//						break;
+//					}
+//				}
+				
+				// Add the euclidean distance to the edge value if neighbor pixel belongs to the same cluster
+				if (i > 0 && this.from_same_cluster(pixelPos, pixelPos - this.width, solution)) { // Upper pixel
+					edgeValue += pixel.get_euclidean_distance(
+							this.image.getRGB(j, i-1));
+				}
+				if (j < (this.width - 1) && this.from_same_cluster(pixelPos, pixelPos + 1, solution)) { // Right pixel
+					edgeValue += pixel.get_euclidean_distance(
+							this.image.getRGB(j+1, i));
+				}
+				if (i < (this.height - 1) && this.from_same_cluster(pixelPos, pixelPos + this.width, solution)) { // Lower pixel
+					edgeValue += pixel.get_euclidean_distance(
+							this.image.getRGB(j, i+1));
+				}
+				if (j > 0 && this.from_same_cluster(pixelPos, pixelPos - 1, solution)) { // Left pixel
+					edgeValue += pixel.get_euclidean_distance(
+							this.image.getRGB(j-1, i));
+				}
+			}
+		}
+		
+		return -edgeValue;
+	}
+	
+	private boolean from_same_cluster (int pixelPos1, int pixelPos2, int[] solution) {
+		
+		int rootPos, aux2;
+		
+		if (solution[pixelPos2] == pixelPos1) return true;
+		
+		if (solution[pixelPos2] == pixelPos2) return false;
+		
+		// Identify root of cluster
+		rootPos = pixelPos1;
+		while (solution[rootPos] != rootPos) {
+			rootPos = solution[rootPos];
+		}
+		
+		aux2 = pixelPos2;
+		while (solution[aux2] != aux2 && solution[aux2] != rootPos) {
+			aux2 = solution[aux2];
+		}
+		
+		if (solution[aux2] == rootPos) return true;
+		
+		return false;		
 	}
 }
