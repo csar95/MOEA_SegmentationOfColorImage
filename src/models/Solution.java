@@ -12,9 +12,9 @@ public class Solution {
 	private double fitness;
 	
 	public Solution(int[] solution, double overallDev, double edgeVal) {
-		this.setSolution(solution);
-		this.setOverallDeviation(overallDev);
-		this.setEdgeValue(edgeVal);
+		this.solution = solution;
+		this.overallDeviation = overallDev;
+		this.edgeValue = edgeVal;
 	}
 	
 	public boolean dominates (Solution sol) {

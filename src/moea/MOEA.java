@@ -2,6 +2,7 @@ package moea;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -22,8 +23,9 @@ public class MOEA {
 	private final int POPULATION_SIZE = 30;
 	private int keySol;
 	private HashMap<Integer, Solution> population;	
-	private final int ARCHIVE_SIZE = 8;
+	private final int ARCHIVE_SIZE = 15;
 	private HashMap<Integer, Solution> archive;
+	private final double CROSSOVER_PROB = 0.9;
 	
 	public MOEA (int[] mst, BufferedImage img) {
 		this.keySol = 1;
@@ -38,6 +40,7 @@ public class MOEA {
 	public void run_algorithm () {
 		
 		HashMap<Integer, Solution> union = new HashMap<Integer, Solution>();
+		ArrayList<Solution> parents = new ArrayList<Solution>();
 		
 		long start = System.currentTimeMillis(), finish;
 		
@@ -72,6 +75,12 @@ public class MOEA {
 		else if (this.archive.size() > this.ARCHIVE_SIZE) {
 			remove_most_similar_from_archive();
 		}
+		
+		// 4. Select parents from archive
+		parents = select_parents();
+		
+		// 5. Crossover and mutation to breed new population
+		reproduce(parents);
 	}
 	
 	private int[] get_initial_solution (int ithIndividual) {
@@ -312,8 +321,7 @@ public class MOEA {
 			
 			int randomMemberKey = membersPendingToBeChecked.remove( (int) (Math.random() * membersPendingToBeChecked.size()) );
 			if (this.is_non_dominated_solution(randomMemberKey, union))
-				this.archive.put(randomMemberKey, union.get(randomMemberKey));
-			
+				this.archive.put(randomMemberKey, union.get(randomMemberKey));			
 		}		
 	}
 	
@@ -385,6 +393,93 @@ public class MOEA {
 			
 			archiveKeyToDelete = (int) ((double) arrayForComparison.get(0)[0]);
 			this.archive.remove(archiveKeyToDelete);
+		}
+		
+	}
+
+	// Binary tournament selection algorithm
+	private ArrayList<Solution> select_parents () {
+		
+		int randomPick1, randomPick2;
+		Solution pick1, pick2;
+		ArrayList<Solution> parents = new ArrayList<Solution>();
+		
+		while (parents.size() < this.POPULATION_SIZE) {
+			
+			randomPick1 = (int) (Math.random() * this.ARCHIVE_SIZE);
+			randomPick2 = (int) (Math.random() * this.ARCHIVE_SIZE);
+			while (randomPick1 == randomPick2) randomPick2 = (int) (Math.random() * this.ARCHIVE_SIZE);
+			
+			pick1 = this.archive.get(randomPick1);
+			pick2 = this.archive.get(randomPick2);
+			
+			if (pick1.getFitness() < pick2.getFitness()) {
+				parents.add(pick1);
+			}
+			else {
+				parents.add(pick2);
+			}
+			
+		}
+		
+		return parents;
+	}
+
+	// Uniform crossover
+	private ArrayList<int[]> apply_crossover (int[] parent1, int[] parent2) {
+		
+		ArrayList<int[]> children = new ArrayList<int[]>();
+		
+		if (Math.random() > this.CROSSOVER_PROB) {
+			children.add(parent1);
+			children.add(parent2);
+			return children;
+		}
+		
+		int[] child1 = new int[parent1.length], child2 = new int[parent1.length];
+		Arrays.fill(child1, -1);
+		Arrays.fill(child2, -1);
+		
+		for (int i = 0; i < parent1.length; i++) {
+			if (Math.random() < 0.5) {
+				if (child1[parent1[i]] == i) child1[i] = i;
+				else child1[i] = parent1[i];
+				if (child2[parent2[i]] == i) child2[i] = i;
+				else child2[i] = parent2[i];
+			}
+			else {
+				if (child1[parent2[i]] == i) child1[i] = i;
+				else child1[i] = parent2[i];
+				if (child2[parent1[i]] == i) child2[i] = i;
+				else child2[i] = parent1[i];
+			}
+		}
+		
+		children.add(child1);
+		children.add(child2);
+		return children;
+		
+	}
+	
+	private void apply_mutation (int[] child) {
+		// TODO:
+	}
+	
+	private void reproduce (ArrayList<Solution> parents) {
+		
+		Solution parent1, parent2;
+		ArrayList<int[]> pairOfChildren = new ArrayList<int[]>();
+		
+		for (int i = 0; i < parents.size(); i += 2) {
+			parent1 = parents.get(i);
+			if (i == parents.size() - 1) parent2 = parents.get(0);
+			else parent2 = parents.get(i + 1);
+			
+			pairOfChildren = apply_crossover(parent1.getSolution(), parent2.getSolution());
+			for (int[] child : pairOfChildren) {
+				apply_mutation(child);
+			}
+			
 		}
 		
 	}
