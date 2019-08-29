@@ -1,8 +1,18 @@
 package models;
 
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+
 public class Solution {
 	
+	private int height;
+	private int width;
+	private List<ArrayList<Integer>> clusters;
 	private int[] solution;
+	
 	private double overallDeviation;
 	private double edgeValue;
 	
@@ -10,6 +20,13 @@ public class Solution {
 	private int rawFitness; // Sum of the strength values of the solutions that dominate a given solution.
 	private double density;
 	private double fitness;
+	
+	public Solution(int[] solution, int height, int width) {
+		this.solution = solution;
+		this.clusters = new ArrayList<ArrayList<Integer>>();
+		this.height = height;
+		this.width = width;
+	}
 	
 	public Solution(int[] solution, double overallDev, double edgeVal) {
 		this.solution = solution;
@@ -27,7 +44,143 @@ public class Solution {
 				Math.pow((this.overallDeviation - sol.getOverallDeviation()), 2) +
 				Math.pow((this.edgeValue - sol.getEdgeValue()), 2));		
 	}
-
+	
+	// setClusters
+	public void identify_clusters () {
+		
+		// Create a new cluster for every root found in solution
+		for (int i = 0; i < this.solution.length; i++) {
+			
+			if (i == this.solution[i]) {
+				ArrayList<Integer> newCluster = new ArrayList<Integer>();
+				newCluster.add(i);
+				// Fill cluster with elements based on solution
+				find_cluster_elems(newCluster);
+				this.clusters.add(newCluster);
+			}
+			
+		}	
+	}
+	
+	private void find_cluster_elems (ArrayList<Integer> cluster) {
+	
+		Queue<Integer> pending = new LinkedList<Integer>();
+		int destination;
+		pending.add(cluster.get(0));		
+			
+		while (!pending.isEmpty()) {		
+			destination = pending.remove();
+			
+			if (destination >= this.width && this.solution[destination - this.width] == destination) {
+				cluster.add(destination - this.width);
+				pending.add(destination - this.width);
+			}
+			if ((destination + 1) % this.width != 0 && this.solution[destination + 1] == destination) {
+				cluster.add(destination + 1);
+				pending.add(destination + 1);
+			}
+			if (destination + this.width < (this.height * this.width) && this.solution[destination + this.width] == destination) {
+				cluster.add(destination + this.width);
+				pending.add(destination + this.width);
+			}
+			if (destination % this.width != 0 && this.solution[destination - 1] == destination) {
+				cluster.add(destination - 1);
+				pending.add(destination - 1);
+			}				
+		}	
+	}
+	
+	// setOverallDeviation
+	public void calculate_overall_deviation (BufferedImage image) {
+		
+		int[] centroid;
+		Pixel centroidPixel;
+		
+		for (ArrayList<Integer> cluster : clusters) {
+			
+			centroid = find_centroid(cluster); // 0: i,  1: j
+			centroidPixel = new Pixel(image.getRGB(centroid[1], centroid[0]));
+			
+			for (int pixelPos : cluster) {
+				this.overallDeviation += centroidPixel.get_euclidean_distance(
+						image.getRGB( pixelPos%this.width, pixelPos/this.width ));
+			}
+		}
+		
+	}
+	
+	private int[] find_centroid (ArrayList<Integer> cluster) {
+		int totalNumElems = cluster.size(), iTotal = 0, jTotal = 0;
+		for (int pixelPos : cluster) {
+			iTotal += pixelPos / this.width;
+			jTotal += pixelPos % this.width;
+		}
+		return new int[] {Math.round(iTotal/totalNumElems), Math.round(jTotal/totalNumElems)};
+	}
+	
+	// setEdgeValue
+	public void calculate_edge_value (BufferedImage image) {
+		
+		double edgeValue = .0;
+		int pixelPos;
+		Pixel pixel;
+		
+		// For every pixel in the image
+		for (int i = 0; i < this.height; i++) {
+			for (int j = 0; j < this.width; j++) {
+				
+				pixel = new Pixel(image.getRGB(j, i));
+				pixelPos = i * this.width + j;
+				
+				// Add the euclidean distance to the edge value if neighbor pixel belongs to the same cluster
+				if (i > 0 && this.from_same_cluster(pixelPos, pixelPos - this.width)) { // Upper pixel
+					edgeValue += pixel.get_euclidean_distance(
+							image.getRGB(j, i-1));
+				}
+				if (j < (this.width - 1) && this.from_same_cluster(pixelPos, pixelPos + 1)) { // Right pixel
+					edgeValue += pixel.get_euclidean_distance(
+							image.getRGB(j+1, i));
+				}
+				if (i < (this.height - 1) && this.from_same_cluster(pixelPos, pixelPos + this.width)) { // Lower pixel
+					edgeValue += pixel.get_euclidean_distance(
+							image.getRGB(j, i+1));
+				}
+				if (j > 0 && this.from_same_cluster(pixelPos, pixelPos - 1)) { // Left pixel
+					edgeValue += pixel.get_euclidean_distance(
+							image.getRGB(j-1, i));
+				}
+			}
+		}
+		
+		this.edgeValue = -edgeValue;
+		
+	}
+	
+	public boolean from_same_cluster (int pixelPos1, int pixelPos2) {
+		
+		int rootPos, aux2;
+		
+		if (this.solution[pixelPos2] == pixelPos1) return true;
+		
+		if (this.solution[pixelPos2] == pixelPos2) return false;
+		
+		// Identify root of cluster
+		rootPos = pixelPos1;
+		while (this.solution[rootPos] != rootPos) {
+			rootPos = this.solution[rootPos];
+		}
+		
+		aux2 = pixelPos2;
+		while (this.solution[aux2] != aux2 && this.solution[aux2] != rootPos) {
+			aux2 = this.solution[aux2];
+		}
+		
+		if (this.solution[aux2] == rootPos) return true;
+		
+		return false;		
+	}
+	
+	
 	public int[] getSolution() {
 		return this.solution;
 	}
@@ -36,6 +189,9 @@ public class Solution {
 	}
 	public double getEdgeValue() {
 		return this.edgeValue;
+	}
+	public List<ArrayList<Integer>> getClusters() {
+		return this.clusters;
 	}
 	public int getStrength() {
 		return this.strength;
@@ -50,12 +206,6 @@ public class Solution {
 		return fitness;
 	}
 	
-	public void setOverallDeviation(double overallDeviation) {
-		this.overallDeviation = overallDeviation;
-	}
-	public void setEdgeValue(double edgeValue) {
-		this.edgeValue = edgeValue;
-	}
 	public void setSolution(int[] solution) {
 		this.solution = solution;
 	}

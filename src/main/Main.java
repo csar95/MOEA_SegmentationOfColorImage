@@ -1,8 +1,12 @@
 package main;
 
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -11,14 +15,16 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import models.ImageGraph;
+import models.Solution;
 import moea.MOEA;
 
 public class Main {
 
 	public static void main(String[] args) {
 		
-		
 		BufferedImage picture = Main.readImageFrom("/testImage.jpg");
+		int height = picture.getHeight();
+		int width = picture.getWidth();
 		
 		// Undirected weighted graph for Prim's algorithm
 		ImageGraph graph = new ImageGraph(picture);
@@ -27,13 +33,40 @@ public class Main {
 		int[] mst = graph.prims_algorithm();
 		
 		MOEA moea = new MOEA(mst, picture);
-		moea.run_algorithm();
-						
-//		for (int j = 0; j < width; j++) {
-//			picture.setRGB(j, height - 1, Color.RED.getRGB());
-//		}
+		HashMap<Integer, Solution> bestSolutions = moea.run_algorithm();
 		
-		Main.showImage(picture);
+		System.out.println("Found best solution!!");
+		
+		// Draw segments
+		Solution bestSolution;
+		ArrayList<Integer> membersInArchive = new ArrayList<Integer>(bestSolutions.keySet());
+		for (int key : membersInArchive) {
+			
+			bestSolution = bestSolutions.get(key);			
+			int[] bestGraph = bestSolution.getSolution();
+			for (int pixelPos = 0; pixelPos < bestGraph.length; pixelPos++) {
+				
+				int j = pixelPos%width;
+				int i = pixelPos/width;
+				
+				// Check if pixel neighbors belong to a different cluster
+				if (i > 0 && !bestSolution.from_same_cluster(pixelPos, pixelPos - width)) { // Upper pixel
+					picture.setRGB(j, i, Color.RED.getRGB());
+				}
+				else if (j < (width - 1) && !bestSolution.from_same_cluster(pixelPos, pixelPos + 1)) { // Right pixel
+					picture.setRGB(j, i, Color.RED.getRGB());
+				}
+				else if (i < (height - 1) && !bestSolution.from_same_cluster(pixelPos, pixelPos + width)) { // Lower pixel
+					picture.setRGB(j, i, Color.RED.getRGB());
+				}
+				else if (j > 0 && !bestSolution.from_same_cluster(pixelPos, pixelPos - 1)) { // Left pixel
+					picture.setRGB(j, i, Color.RED.getRGB());
+				}			
+				
+			}
+			
+			Main.saveImage(picture, key);			
+		}
 
 	}
 	
@@ -51,17 +84,35 @@ public class Main {
 				
 	}
 	
-	private static void showImage (BufferedImage img) {
+//	private static void showImage (BufferedImage img) {
+//		
+//		File outputfile = new File("result.jpg");
+//		try {
+//			ImageIO.write(img, "jpg", outputfile);
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+//		
+//		JLabel picLabel = new JLabel(new ImageIcon(img));
+//		
+//		JPanel jPanel = new JPanel();
+//		jPanel.add(picLabel);
+//		
+//		JFrame f = new JFrame();
+//		f.setSize(new Dimension(img.getWidth()+30, img.getHeight()+30));
+//		f.add(jPanel);
+//		f.setVisible(true);
+//		
+//	}
+	
+	private static void saveImage (BufferedImage img, int key) {
 		
-		JLabel picLabel = new JLabel(new ImageIcon(img));
-		
-		JPanel jPanel = new JPanel();
-		jPanel.add(picLabel);
-		
-		JFrame f = new JFrame();
-		f.setSize(new Dimension(img.getWidth()+30, img.getHeight()+30));
-		f.add(jPanel);
-		f.setVisible(true);
+		File outputfile = new File("result" + key + ".jpg");
+		try {
+			ImageIO.write(img, "jpg", outputfile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 	}
 	

@@ -6,12 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-
-import models.Pixel;
 import models.Solution;
 
 public class MOEA {
@@ -20,12 +15,16 @@ public class MOEA {
 	private BufferedImage image;
 	private int height;
 	private int width;
-	private final int POPULATION_SIZE = 30;
+	private final int POPULATION_SIZE = 50;
 	private int keySol;
 	private HashMap<Integer, Solution> population;	
-	private final int ARCHIVE_SIZE = 15;
+	private final int ARCHIVE_SIZE = 20;
 	private HashMap<Integer, Solution> archive;
+	private final int NUMBER_OF_GENERATIONS = 100;
 	private final double CROSSOVER_PROB = 0.9;
+	private final double MUTATION_PROB = 0.0001;
+//	private final int MIN_CLUSTER_SIZE = 200;
+	
 	
 	public MOEA (int[] mst, BufferedImage img) {
 		this.keySol = 1;
@@ -37,202 +36,94 @@ public class MOEA {
 		this.archive = new HashMap<Integer, Solution>();
 	}
 	
-	public void run_algorithm () {
+	public HashMap<Integer, Solution> run_algorithm () {
 		
 		HashMap<Integer, Solution> union = new HashMap<Integer, Solution>();
 		ArrayList<Solution> parents = new ArrayList<Solution>();
+		int generation = 1;
 		
 		long start = System.currentTimeMillis(), finish;
 		
 		// 1. Initialization
-		while (this.keySol <= this.POPULATION_SIZE) {
-			int[] initialSolution = this.get_initial_solution(this.keySol);
-			List<ArrayList<Integer>> clusters = get_clusters(initialSolution);
+		while (this.keySol <= this.POPULATION_SIZE) {			
+			Solution newSolution = new Solution( this.get_initial_solution(this.keySol), this.height, this.width );
+			newSolution.identify_clusters();
+			
 			// Calculate objectives
-			this.population.put(this.keySol, new Solution(initialSolution, this.calculate_overall_deviation(clusters), this.calculate_edge_value(clusters, initialSolution)));
+			newSolution.calculate_overall_deviation(this.image);
+			newSolution.calculate_edge_value(this.image);
+			
+			this.population.put(this.keySol, newSolution);
 			this.keySol++;
 		}
 		
-		// 50 pop - 3 mins | 30 pop - <1,5 min
-		finish = System.currentTimeMillis();
-		System.out.println("Initial solutions generated in " + (finish - start) / 1000. + " seconds.");
-		System.out.println("------------------------------------");
-		start = System.currentTimeMillis();
-		
-		union.clear();
-		union.putAll(this.population);
-		union.putAll(this.archive);
-		
-		// 2. Fitness assignment
-		calculate_strength_and_density(union);
-		calculate_fitness(union);
-		
-		// 3. Environmental selection
-		get_non_dominated(union);		
-		if (this.archive.size() < this.ARCHIVE_SIZE) {
-			populate_archive_with_remaining_best(union);
-		}
-		else if (this.archive.size() > this.ARCHIVE_SIZE) {
-			remove_most_similar_from_archive();
-		}
-		
-		// 4. Select parents from archive
-		parents = select_parents();
-		
-		// 5. Crossover and mutation to breed new population
-		reproduce(parents);
+		while (true) {
+			
+			finish = System.currentTimeMillis();
+			System.out.println("Generation: " + generation + " | " + (finish - start) / 1000. + " seconds.");
+			System.out.println("------------------------------------");
+			start = System.currentTimeMillis();
+			
+			union.clear();
+			union.putAll(this.population);
+			union.putAll(this.archive);
+			
+			// 2. Fitness assignment
+			calculate_strength_and_density(union);
+			calculate_fitness(union);
+			
+			// 3. Environmental selection
+			get_non_dominated(union);		
+			if (this.archive.size() < this.ARCHIVE_SIZE) {
+				populate_archive_with_remaining_best(union);
+			}
+			else if (this.archive.size() > this.ARCHIVE_SIZE) {
+				remove_most_similar_from_archive();
+			}
+			
+			// 4. Termination
+			if (generation == this.NUMBER_OF_GENERATIONS) {
+				/*
+				 * ArrayList<Integer> membersFromArchiveToBeChecked = new
+				 * ArrayList<Integer>(this.archive.keySet()); double minFitness = 999999999.9;
+				 * Solution bestSolution = null, solution;
+				 * 
+				 * for (int key : membersFromArchiveToBeChecked) { solution =
+				 * this.archive.get(key); if (solution.getFitness() < minFitness) { minFitness =
+				 * solution.getFitness(); bestSolution = solution; } }
+				 */
+				
+				return this.archive;
+			}
+			
+			// 5. Select parents from archive
+			parents = select_parents();
+			
+			// 6. Crossover and mutation to breed new population
+			reproduce(parents);
+			
+			generation++;			
+		}		
 	}
 	
 	private int[] get_initial_solution (int ithIndividual) {
 		
 		int[] solution = mst.clone(); // Deepcopy
-		int numOfClusters = 0;
+		int numOfClusters = 0, marginTop, marginBottom;
 		
-		// In the initialization of the ith individual in the population, the (i − 1) long links are removed from the MST individual
+		// In the initialization of the ith individual in the population, the (i − 1) long links are removed from the MST individual		
 		while (numOfClusters < (ithIndividual - 1)) {
-			int randomCut = (int) (Math.random() * solution.length);
-			if (solution[randomCut] != randomCut) {
-				solution[randomCut] = randomCut;
-				numOfClusters++;
-			}
+			
+			if (numOfClusters == (ithIndividual - 2)) marginTop = solution.length;
+			else marginTop = solution.length/(ithIndividual - 1) * (numOfClusters + 1);			
+			marginBottom = solution.length/(ithIndividual - 1) * (numOfClusters);
+			
+			int randomCut = (int) (Math.random() * (marginTop - marginBottom) + marginBottom);
+			solution[randomCut] = randomCut;
+			numOfClusters++;
 		}
 		
 		return solution;
-	}
-	
-	private List<ArrayList<Integer>> get_clusters (int[] solution) {
-		
-		List<ArrayList<Integer>> clusters = new ArrayList<ArrayList<Integer>>();
-		
-		// Create a new cluster for every root found in solution
-		for (int i = 0; i < solution.length; i++) {
-			if (i == solution[i]) {
-				ArrayList<Integer> newCluster = new ArrayList<Integer>();
-				newCluster.add(i);
-				// Fill cluster with elements based on solution
-				find_cluster_elems(newCluster, solution);
-				clusters.add(newCluster);
-			}
-		}
-		
-		return clusters;		
-	}
-	
-	private void find_cluster_elems (ArrayList<Integer> cluster, int[] solution) {
-	
-		Queue<Integer> pending = new LinkedList<Integer>();
-		int destination;
-		pending.add(cluster.get(0));		
-			
-		while (!pending.isEmpty()) {		
-			destination = pending.remove();
-			
-			if (destination >= this.width && solution[destination - this.width] == destination) {
-				cluster.add(destination - this.width);
-				pending.add(destination - this.width);
-			}
-			if ((destination + 1) % this.width != 0 && solution[destination + 1] == destination) {
-				cluster.add(destination + 1);
-				pending.add(destination + 1);
-			}
-			if (destination + this.width < (this.height * this.width) && solution[destination + this.width] == destination) {
-				cluster.add(destination + this.width);
-				pending.add(destination + this.width);
-			}
-			if (destination % this.width != 0 && solution[destination - 1] == destination) {
-				cluster.add(destination - 1);
-				pending.add(destination - 1);
-			}				
-		}	
-	}
-
-	private double calculate_overall_deviation (List<ArrayList<Integer>> clusters) {
-		
-		double overallDeviation = .0;
-		int[] centroid;
-		Pixel centroidPixel;
-		
-		for (ArrayList<Integer> cluster : clusters) {
-			
-			centroid = find_centroid(cluster); // 0: i,  1: j
-			centroidPixel = new Pixel(this.image.getRGB(centroid[1], centroid[0]));
-			
-			for (int pixelPos : cluster) {
-				overallDeviation += centroidPixel.get_euclidean_distance(
-						this.image.getRGB( pixelPos%this.width, pixelPos/this.width ));
-			}
-		}
-		
-		return overallDeviation;		
-	}
-	
-	private int[] find_centroid (ArrayList<Integer> cluster) {
-		int totalNumElems = cluster.size(), iTotal = 0, jTotal = 0;
-		for (int pixelPos : cluster) {
-			iTotal += pixelPos / this.width;
-			jTotal += pixelPos % this.width;
-		}
-		return new int[] {Math.round(iTotal/totalNumElems), Math.round(jTotal/totalNumElems)};
-	}
-
-	private double calculate_edge_value (List<ArrayList<Integer>> clusters, int[] solution) {
-		
-		double edgeValue = .0;
-		int pixelPos;
-		Pixel pixel;
-		
-		// For every pixel in the image
-		for (int i = 0; i < this.height; i++) {
-			for (int j = 0; j < this.width; j++) {
-				
-				pixel = new Pixel(this.image.getRGB(j, i));
-				pixelPos = i * this.width + j;
-				
-				// Add the euclidean distance to the edge value if neighbor pixel belongs to the same cluster
-				if (i > 0 && this.from_same_cluster(pixelPos, pixelPos - this.width, solution)) { // Upper pixel
-					edgeValue += pixel.get_euclidean_distance(
-							this.image.getRGB(j, i-1));
-				}
-				if (j < (this.width - 1) && this.from_same_cluster(pixelPos, pixelPos + 1, solution)) { // Right pixel
-					edgeValue += pixel.get_euclidean_distance(
-							this.image.getRGB(j+1, i));
-				}
-				if (i < (this.height - 1) && this.from_same_cluster(pixelPos, pixelPos + this.width, solution)) { // Lower pixel
-					edgeValue += pixel.get_euclidean_distance(
-							this.image.getRGB(j, i+1));
-				}
-				if (j > 0 && this.from_same_cluster(pixelPos, pixelPos - 1, solution)) { // Left pixel
-					edgeValue += pixel.get_euclidean_distance(
-							this.image.getRGB(j-1, i));
-				}
-			}
-		}
-		
-		return -edgeValue;
-	}
-	
-	private boolean from_same_cluster (int pixelPos1, int pixelPos2, int[] solution) {
-		
-		int rootPos, aux2;
-		
-		if (solution[pixelPos2] == pixelPos1) return true;
-		
-		if (solution[pixelPos2] == pixelPos2) return false;
-		
-		// Identify root of cluster
-		rootPos = pixelPos1;
-		while (solution[rootPos] != rootPos) {
-			rootPos = solution[rootPos];
-		}
-		
-		aux2 = pixelPos2;
-		while (solution[aux2] != aux2 && solution[aux2] != rootPos) {
-			aux2 = solution[aux2];
-		}
-		
-		if (solution[aux2] == rootPos) return true;
-		
-		return false;		
 	}
 	
 	/*
@@ -403,12 +294,13 @@ public class MOEA {
 		int randomPick1, randomPick2;
 		Solution pick1, pick2;
 		ArrayList<Solution> parents = new ArrayList<Solution>();
+		ArrayList<Integer> keysInArchive = new ArrayList<Integer>(this.archive.keySet());
 		
 		while (parents.size() < this.POPULATION_SIZE) {
 			
-			randomPick1 = (int) (Math.random() * this.ARCHIVE_SIZE);
-			randomPick2 = (int) (Math.random() * this.ARCHIVE_SIZE);
-			while (randomPick1 == randomPick2) randomPick2 = (int) (Math.random() * this.ARCHIVE_SIZE);
+			randomPick1 = keysInArchive.get( (int) (Math.random() * this.ARCHIVE_SIZE) );
+			randomPick2 = keysInArchive.get( (int) (Math.random() * this.ARCHIVE_SIZE) );
+			while (randomPick1 == randomPick2) randomPick2 = keysInArchive.get( (int) (Math.random() * this.ARCHIVE_SIZE) );
 			
 			pick1 = this.archive.get(randomPick1);
 			pick2 = this.archive.get(randomPick2);
@@ -462,7 +354,33 @@ public class MOEA {
 	}
 	
 	private void apply_mutation (int[] child) {
-		// TODO:
+		
+		int option = 0;
+		
+		for (int i = 0; i < child.length; i++) {
+			
+			if (Math.random() < this.MUTATION_PROB) {
+				option = (int) Math.random() * 5;
+				switch (option) {
+					case 1: // Up
+						if (i >= this.width) child[i] = i - this.width;
+						break;
+					case 2: // Right
+						if ((i+1) % this.width != 0) child[i] = i++;
+						break;
+					case 3: // Down
+						if (i < (child.length - this.width)) child[i] = i + this.width;
+						break;
+					case 4: // Left
+						if (i % this.width != 0) child[i] = i--;
+						break;
+					default: // None
+						child[i] = i;
+						break;
+				}
+			}			
+		}
+		
 	}
 	
 	private void reproduce (ArrayList<Solution> parents) {
@@ -470,17 +388,30 @@ public class MOEA {
 		Solution parent1, parent2;
 		ArrayList<int[]> pairOfChildren = new ArrayList<int[]>();
 		
+		this.population.clear();
+		
 		for (int i = 0; i < parents.size(); i += 2) {
+			
 			parent1 = parents.get(i);
 			if (i == parents.size() - 1) parent2 = parents.get(0);
 			else parent2 = parents.get(i + 1);
 			
 			pairOfChildren = apply_crossover(parent1.getSolution(), parent2.getSolution());
+			
 			for (int[] child : pairOfChildren) {
 				apply_mutation(child);
-			}
-			
-		}
-		
+				
+				Solution newSolution = new Solution(child, this.height, this.width);
+				newSolution.identify_clusters();
+				
+				// Calculate objectives
+				newSolution.calculate_overall_deviation(this.image);
+				newSolution.calculate_edge_value(this.image);
+				
+				this.population.put(this.keySol, newSolution);
+				this.keySol++;
+			}			
+		}		
 	}
+	
 }
