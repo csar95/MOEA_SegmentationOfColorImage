@@ -18,12 +18,12 @@ public class MOEA {
 	private final int POPULATION_SIZE = 50;
 	private int keySol;
 	private HashMap<Integer, Solution> population;	
-	private final int ARCHIVE_SIZE = 20;
+	private final int ARCHIVE_SIZE = 50;
 	private HashMap<Integer, Solution> archive;
 	private final int NUMBER_OF_GENERATIONS = 100;
 	private final double CROSSOVER_PROB = 0.9;
 	private final double MUTATION_PROB = 0.0001;
-//	private final int MIN_CLUSTER_SIZE = 200;
+//	private final int MIN_CLUSTER_SIZE = 100;
 	
 	
 	public MOEA (int[] mst, BufferedImage img) {
@@ -50,7 +50,7 @@ public class MOEA {
 			newSolution.identify_clusters();
 			
 			// Calculate objectives
-			newSolution.calculate_overall_deviation(this.image);
+			newSolution.calculate_overall_deviation(this.image);			
 			newSolution.calculate_edge_value(this.image);
 			
 			this.population.put(this.keySol, newSolution);
@@ -109,18 +109,15 @@ public class MOEA {
 	private int[] get_initial_solution (int ithIndividual) {
 		
 		int[] solution = mst.clone(); // Deepcopy
-		int numOfClusters = 0, marginTop, marginBottom;
+		int numOfClusters = 0;
 		
-		// In the initialization of the ith individual in the population, the (i − 1) long links are removed from the MST individual		
+		// In the initialization of the ith individual in the population, the (i − 1) long links are removed from the MST individual
 		while (numOfClusters < (ithIndividual - 1)) {
-			
-			if (numOfClusters == (ithIndividual - 2)) marginTop = solution.length;
-			else marginTop = solution.length/(ithIndividual - 1) * (numOfClusters + 1);			
-			marginBottom = solution.length/(ithIndividual - 1) * (numOfClusters);
-			
-			int randomCut = (int) (Math.random() * (marginTop - marginBottom) + marginBottom);
-			solution[randomCut] = randomCut;
-			numOfClusters++;
+			int randomCut = (int) (Math.random() * solution.length);
+			if (solution[randomCut] != randomCut) {
+				solution[randomCut] = randomCut;
+				numOfClusters++;
+			}
 		}
 		
 		return solution;
@@ -355,28 +352,32 @@ public class MOEA {
 	
 	private void apply_mutation (int[] child) {
 		
-		int option = 0;
+		ArrayList<Integer> options = new ArrayList<Integer>(), visited = new ArrayList<Integer>();
+		int rootPos;
 		
 		for (int i = 0; i < child.length; i++) {
 			
 			if (Math.random() < this.MUTATION_PROB) {
-				option = (int) Math.random() * 5;
-				switch (option) {
-					case 1: // Up
-						if (i >= this.width) child[i] = i - this.width;
-						break;
-					case 2: // Right
-						if ((i+1) % this.width != 0) child[i] = i++;
-						break;
-					case 3: // Down
-						if (i < (child.length - this.width)) child[i] = i + this.width;
-						break;
-					case 4: // Left
-						if (i % this.width != 0) child[i] = i--;
-						break;
-					default: // None
-						child[i] = i;
-						break;
+				options.clear();
+
+				options.add(i); // Itself
+				if (i >= this.width) options.add(i-this.width); // Upper pixel
+				if ((i+1) % this.width != 0) options.add(i+1); // Right pixel
+				if (i < child.length - this.width) options.add(i+this.width); // Lower pixel
+				if (i % this.width != 0) options.add(i-1); // Left pixel
+
+				child[i] = options.remove( (int) Math.random() * options.size() );										
+				
+				// Check if there is a loop
+				visited.clear();
+				rootPos = i;
+				while (child[rootPos] != rootPos) {
+					visited.add(rootPos);
+					if (visited.contains(child[rootPos])) { // There is loop --> Begin again
+						child[i] = options.remove( (int) Math.random() * options.size() );
+						rootPos = i;
+					}
+					rootPos = child[rootPos];
 				}
 			}			
 		}
@@ -397,17 +398,23 @@ public class MOEA {
 			else parent2 = parents.get(i + 1);
 			
 			pairOfChildren = apply_crossover(parent1.getSolution(), parent2.getSolution());
+			System.out.println("apply_crossover");
 			
 			for (int[] child : pairOfChildren) {
 				apply_mutation(child);
+				System.out.println("apply_mutation");
 				
 				Solution newSolution = new Solution(child, this.height, this.width);
 				newSolution.identify_clusters();
+				System.out.println("identify_clusters");
 				
 				// Calculate objectives
 				newSolution.calculate_overall_deviation(this.image);
+				System.out.println("calculate_overall_deviation");
+
 				newSolution.calculate_edge_value(this.image);
-				
+				System.out.println("calculate_edge_value");
+
 				this.population.put(this.keySol, newSolution);
 				this.keySol++;
 			}			

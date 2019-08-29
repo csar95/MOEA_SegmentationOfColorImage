@@ -12,6 +12,7 @@ public class Solution {
 	private int width;
 	private List<ArrayList<Integer>> clusters;
 	private int[] solution;
+	private final int MIN_CLUSTER_SIZE = 100;
 	
 	private double overallDeviation;
 	private double edgeValue;
@@ -28,18 +29,12 @@ public class Solution {
 		this.width = width;
 	}
 	
-	public Solution(int[] solution, double overallDev, double edgeVal) {
-		this.solution = solution;
-		this.overallDeviation = overallDev;
-		this.edgeValue = edgeVal;
-	}
-	
 	public boolean dominates (Solution sol) {
 		if (this.overallDeviation < sol.getOverallDeviation() && this.edgeValue < sol.getEdgeValue()) return true;
 		return false;
 	}
 	
-	public double calculate_euclidean_distance_between_objectives (Solution sol) {				
+	public double calculate_euclidean_distance_between_objectives (Solution sol) {
 		return Math.sqrt(
 				Math.pow((this.overallDeviation - sol.getOverallDeviation()), 2) +
 				Math.pow((this.edgeValue - sol.getEdgeValue()), 2));		
@@ -48,18 +43,57 @@ public class Solution {
 	// setClusters
 	public void identify_clusters () {
 		
+		int rootPos;
+		ArrayList<Integer> options = new ArrayList<Integer>(), visited = new ArrayList<Integer>();
+		
 		// Create a new cluster for every root found in solution
 		for (int i = 0; i < this.solution.length; i++) {
 			
 			if (i == this.solution[i]) {
+				
 				ArrayList<Integer> newCluster = new ArrayList<Integer>();
 				newCluster.add(i);
+				
 				// Fill cluster with elements based on solution
 				find_cluster_elems(newCluster);
-				this.clusters.add(newCluster);
+				
+				// If cluster is not large enough, mix it with a larger one
+				if (newCluster.size() < this.MIN_CLUSTER_SIZE) {
+										
+					options.clear();
+
+					if (i >= this.width) options.add(i-this.width); // Upper pixel
+					if ((i+1) % this.width != 0) options.add(i+1); // Right pixel
+					if (i < this.solution.length - this.width) options.add(i+this.width); // Lower pixel
+					if (i % this.width != 0) options.add(i-1); // Left pixel
+
+					this.solution[i] = options.remove( (int) Math.random() * options.size() );										
+					
+					// Check if there is a loop
+					visited.clear();
+					rootPos = i;					
+					while (this.solution[rootPos] != rootPos) {
+						visited.add(rootPos);
+						if (visited.contains(this.solution[rootPos])) { // There is loop --> Begin again
+							this.solution[i] = options.remove( (int) Math.random() * options.size() );
+							rootPos = i;
+						}
+						rootPos = this.solution[rootPos];
+					}					
+
+					for (ArrayList<Integer> cluster : this.clusters) {
+						if (cluster.contains(this.solution[i])) {
+							// Add elements from the new cluster to an existing one that is larger that the minimum
+							for (int pixel : newCluster) cluster.add(pixel);
+							break;
+						}
+					}
+				}
+				else {
+					this.clusters.add(newCluster);
+				}
 			}
-			
-		}	
+		}
 	}
 	
 	private void find_cluster_elems (ArrayList<Integer> cluster) {
