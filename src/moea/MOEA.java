@@ -398,22 +398,16 @@ public class MOEA {
 			else parent2 = parents.get(i + 1);
 			
 			pairOfChildren = apply_crossover(parent1.getSolution(), parent2.getSolution());
-			System.out.println("apply_crossover");
 			
 			for (int[] child : pairOfChildren) {
 				apply_mutation(child);
-				System.out.println("apply_mutation");
 				
 				Solution newSolution = new Solution(child, this.height, this.width);
 				newSolution.identify_clusters();
-				System.out.println("identify_clusters");
 				
 				// Calculate objectives
 				newSolution.calculate_overall_deviation(this.image);
-				System.out.println("calculate_overall_deviation");
-
 				newSolution.calculate_edge_value(this.image);
-				System.out.println("calculate_edge_value");
 
 				this.population.put(this.keySol, newSolution);
 				this.keySol++;
